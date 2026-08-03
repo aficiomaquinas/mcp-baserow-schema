@@ -53,9 +53,10 @@ function loadSpec(): OpenApiSpec {
  * to a regex that matches numeric IDs. Also handles {uuid} style params.
  */
 function pathToRegex(template: string): RegExp {
-  // Replace {param} with a capture group for numbers or UUIDs
+  // Replace {param} with specific capture groups
+  // {table_id} and {row_id} etc. are numeric
   const pattern = template
-    .replace(/\{[^}]+\}/g, "[^/]+")
+    .replace(/\{[^}]+\}/g, "\\d+")
     .replace(/\//g, "\\/");
   return new RegExp("^" + pattern + "\\/?$");
 }
