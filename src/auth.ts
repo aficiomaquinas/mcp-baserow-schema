@@ -110,7 +110,7 @@ export class BaserowAuth {
     if (!this.tokens || this.isExpired()) {
       await this.authenticate();
     }
-    return this.tokens!.accessToken;
+    return this.tokens!.token;
   }
 
   /**
