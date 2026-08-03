@@ -1,12 +1,16 @@
 /**
  * MCP Server entry point for Baserow with 2FA authentication.
- * Handles ListToolsRequestSchema and CallToolRequestSchema via StdioServerTransport.
+ *
+ * Exposes two tools:
+ *  - `baserow_api`: Generic HTTP client for any Baserow API endpoint
+ *  - `auth_status`: Debug auth state
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { BaserowAuth } from "./auth.js";
 import { BaserowApiClient } from "./api.js";
-import { registerTools } from "./tools.js";
+import { validateEndpoint } from "./spec.js";
 
 // ── Environment variables ──────────────────────────
 
@@ -38,18 +42,77 @@ const api = new BaserowApiClient(auth, API_URL);
 
 const server = new McpServer({
   name: "mcp-baserow",
-  version: "1.0.0",
+  version: "2.0.0",
 });
 
-// Register all 15 tools
-registerTools(server, api, auth);
+// ── Tool: baserow_api ──────────────────────────────
+
+server.tool(
+  "baserow_api",
+  `Generic Baserow API client. Call ANY Baserow endpoint with method, path, body, and query params.
+
+Examples:
+  GET  /api/database/tables/database/357/                          → list tables
+  POST /api/database/views/table/965/  {name, type}                → create view
+  POST /api/database/views/4029/filters/  {field, type, value}     → create filter
+  DELETE /api/database/tables/968/                                 → delete table
+  PATCH /api/database/rows/table/965/11/  {status}  ?user_field_names=true → update row
+  POST /api/database/rows/table/965/batch/  {items:[...]}         → batch update
+
+Auth is handled automatically. Just provide the method, path, and optional body/query.`,
+  {
+    method: z.enum(["GET", "POST", "PATCH", "DELETE", "PUT"]).describe("HTTP method"),
+    path: z.string().describe('API path starting with /api/. Example: "/api/database/tables/database/357/"'),
+    body: z.any().optional().describe("JSON body for POST/PATCH/PUT requests"),
+    query: z.record(z.string()).optional().describe('Query parameters as key-value pairs. Example: {"page": "1", "size": "100", "user_field_names": "true"}'),
+  },
+  async (args) => {
+    try {
+      // Validate against OpenAPI spec (non-blocking — warns only)
+      const validation = validateEndpoint(args.method, args.path);
+
+      const resp = await api.request(args.method, args.path, {
+        body: args.body,
+        query: args.query,
+      });
+
+      // Prepend spec warning if path wasn't found
+      let output = JSON.stringify(resp.data, null, 2);
+      if (!validation.found && validation.hint) {
+        output = `⚠️ OpenAPI spec: ${validation.hint}\n\n` + output;
+      }
+
+      return {
+        content: [{ type: "text" as const, text: output }],
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        content: [{ type: "text" as const, text: `Error: ${message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ── Tool: auth_status ──────────────────────────────
+
+server.tool(
+  "auth_status",
+  "Check the current authentication state including email, user ID, and token expiry.",
+  {},
+  async () => {
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(auth.getStatus(), null, 2) }],
+    };
+  },
+);
 
 // ── Start ──────────────────────────────────────────
 
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // Server is now running on stdio - MCP protocol handles communication
 }
 
 main().catch((err) => {
