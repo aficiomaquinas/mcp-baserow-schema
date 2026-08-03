@@ -1,16 +1,26 @@
 /**
  * Baserow 2FA authentication handler.
- * Handles the full login flow: username/password → temp token → TOTP verify → JWT tokens.
- * Auto-refreshes before actual expiry using the JWT exp claim.
+ *
+ * Token lifecycle (confirmed from Baserow docs + community):
+ * - access_token: 10 minutes (JWT, decoded from exp claim)
+ * - refresh_token: 7 days
+ * - temp_token: ~60 seconds (only for2FA verify step)
+ *
+ * Flow:
+ * 1. POST /api/user/token-auth/ → temp token
+ * 2. POST /api/two-factor-auth/verify/ → access_token + refresh_token
+ * 3. POST /api/user/token-refresh/ → new access_token (using refresh_token)
+ *
+ * Strategy: re-login with2FA only when refresh_token expires (~7 days).
+ * In between, use refresh_token to get new access_tokens silently.
  */
 import { generateTOTP } from "./totp.js";
 
 export interface AuthTokens {
-  token: string;
+  accessToken: string;
   refreshToken: string;
-  userId?: number;
-  email?: string;
   expiresAt: number; // actual JWT exp * 1000 (epoch ms)
+  refreshExpiresAt: number; // refresh_token expiry (epoch ms)
 }
 
 export interface AuthConfig {
@@ -23,8 +33,10 @@ export interface AuthConfig {
 export class BaserowAuth {
   private config: AuthConfig;
   private tokens: AuthTokens | null = null;
-  // Refresh 2 minutes before actual expiry
-  private static readonly REFRESH_BUFFER_MS = 120_000;
+  // Refresh access_token 2 minutes before expiry
+  private static readonly ACCESS_BUFFER_MS = 120_000;
+  // Re-login with2FA 5 minutes before refresh_token expiry
+  private static readonly REFRESH_BUFFER_MS = 300_000;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -47,7 +59,7 @@ export class BaserowAuth {
    * 1. POST /api/user/token-auth/ → temp token
    * 2. POST /api/two-factor-auth/verify/ → JWT tokens
    */
-  async authenticate(): Promise<AuthTokens> {
+  async loginWith2FA(): Promise<AuthTokens> {
     // Step 1: Get temp token from username/password
     const tokenResp = await fetch(
       this.config.apiUrl + "/api/user/token-auth/",
@@ -100,41 +112,103 @@ export class BaserowAuth {
     const verifyData = (await verifyResp.json()) as {
       token: string;
       refresh_token: string;
-      user?: { id: number; email: string };
     };
 
-    // Extract actual expiry from JWT
     const { exp } = this.decodeJwtPayload(verifyData.token);
+    const now = Date.now();
 
     this.tokens = {
-      token: verifyData.token,
+      accessToken: verifyData.token,
       refreshToken: verifyData.refresh_token,
-      userId: verifyData.user?.id,
-      email: verifyData.user?.email ?? this.config.username,
-      // exp is in seconds, convert to ms
       expiresAt: exp * 1000,
+      // refresh_token valid for 7 days — store approximate expiry
+      // We don't decode it (it might not be a JWT), so use 7 days from now
+      refreshExpiresAt: now + 7 * 24 * 60 * 60 * 1000,
     };
 
     return this.tokens;
   }
 
   /**
-   * Get a valid access token, authenticating if necessary.
+   * Refresh access_token using refresh_token (no2FA needed).
    */
-  async getAccessToken(): Promise<string> {
-    if (!this.tokens || this.isExpired()) {
-      await this.authenticate();
+  async refreshAccessToken(): Promise<void> {
+    if (!this.tokens?.refreshToken) {
+      throw new Error("No refresh token available");
     }
-    return this.tokens!.token;
+
+    const resp = await fetch(
+      this.config.apiUrl + "/api/user/token-refresh/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refresh_token: this.tokens.refreshToken,
+        }),
+      },
+    );
+
+    if (!resp.ok) {
+      // Refresh token expired or invalid — need full re-login
+      throw new Error("Refresh failed: " + resp.status);
+    }
+
+    const data = (await resp.json()) as {
+      token: string;
+      refresh_token?: string;
+    };
+
+    const { exp } = this.decodeJwtPayload(data.token);
+
+    this.tokens.accessToken = data.token;
+    this.tokens.expiresAt = exp * 1000;
+
+    // If a new refresh_token was issued, update it
+    if (data.refresh_token) {
+      this.tokens.refreshToken = data.refresh_token;
+      this.tokens.refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    }
   }
 
   /**
-   * Check if the current token is expired or about to expire.
+   * Get a valid access token, handling refresh and re-login as needed.
+   */
+  async getAccessToken(): Promise<string> {
+    const now = Date.now();
+
+    // Case 1: No tokens at all → full login
+    if (!this.tokens) {
+      await this.loginWith2FA();
+      return this.tokens!.accessToken;
+    }
+
+    // Case 2: refresh_token expired → full re-login with2FA
+    if (now >= this.tokens.refreshExpiresAt - BaserowAuth.REFRESH_BUFFER_MS) {
+      await this.loginWith2FA();
+      return this.tokens!.accessToken;
+    }
+
+    // Case 3: access_token expired but refresh_token valid → silent refresh
+    if (now >= this.tokens.expiresAt - BaserowAuth.ACCESS_BUFFER_MS) {
+      try {
+        await this.refreshAccessToken();
+      } catch {
+        // Refresh failed — fallback to full login
+        await this.loginWith2FA();
+      }
+      return this.tokens!.accessToken;
+    }
+
+    // Case 4: token still valid
+    return this.tokens.accessToken;
+  }
+
+  /**
+   * Check if the current access_token is expired or about to expire.
    */
   isExpired(): boolean {
     if (!this.tokens) return true;
-    // Refresh 2 minutes before actual expiry
-    return Date.now() >= this.tokens.expiresAt - BaserowAuth.REFRESH_BUFFER_MS;
+    return Date.now() >= this.tokens.expiresAt - BaserowAuth.ACCESS_BUFFER_MS;
   }
 
   /**
@@ -142,23 +216,24 @@ export class BaserowAuth {
    */
   getStatus(): {
     authenticated: boolean;
-    email?: string;
-    userId?: number;
     expiresAt?: string;
     isExpired: boolean;
-    remainingSeconds?: number;
+    accessRemainingSeconds?: number;
+    refreshRemainingDays?: number;
   } {
     if (!this.tokens) {
       return { authenticated: false, isExpired: true };
     }
-    const remainingMs = this.tokens.expiresAt - Date.now();
+    const now = Date.now();
+    const accessRemaining = Math.max(0, Math.floor((this.tokens.expiresAt - now) / 1000));
+    const refreshRemaining = Math.max(0, Math.floor((this.tokens.refreshExpiresAt - now) / (1000 * 60 * 60 * 24)));
+
     return {
       authenticated: true,
-      email: this.tokens.email,
-      userId: this.tokens.userId,
       expiresAt: new Date(this.tokens.expiresAt).toISOString(),
       isExpired: this.isExpired(),
-      remainingSeconds: Math.max(0, Math.floor(remainingMs / 1000)),
+      accessRemainingSeconds: accessRemaining,
+      refreshRemainingDays: refreshRemaining,
     };
   }
 }
