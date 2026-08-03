@@ -37,7 +37,7 @@ export class BaserowAuth {
   async authenticate(): Promise<AuthTokens> {
     // Step 1: Get temp token from username/password
     const tokenResp = await fetch(
-      `${this.config.apiUrl}/api/user/token-auth/`,
+      this.config.apiUrl + "/api/user/token-auth/",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,7 +51,7 @@ export class BaserowAuth {
     if (!tokenResp.ok) {
       const err = await tokenResp.text();
       throw new Error(
-        `Token auth failed (${tokenResp.status}): ${err}`,
+        "Token auth failed (" + tokenResp.status + "): " + err,
       );
     }
 
@@ -62,12 +62,12 @@ export class BaserowAuth {
     const totpCode = generateTOTP(this.config.totpSecret);
 
     const verifyResp = await fetch(
-      `${this.config.apiUrl}/api/two-factor-auth/verify/`,
+      this.config.apiUrl + "/api/two-factor-auth/verify/",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${tempToken}`,
+          Authorization: "Bearer " + tempToken,
         },
         body: JSON.stringify({
           type: "totp",
@@ -80,7 +80,7 @@ export class BaserowAuth {
     if (!verifyResp.ok) {
       const err = await verifyResp.text();
       throw new Error(
-        `TOTP verification failed (${verifyResp.status}): ${err}`,
+        "TOTP verification failed (" + verifyResp.status + "): " + err,
       );
     }
 

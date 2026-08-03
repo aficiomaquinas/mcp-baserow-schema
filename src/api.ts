@@ -32,7 +32,7 @@ export class BaserowApiClient {
     const token = await this.auth.getAccessToken();
 
     // Build URL with query params
-    const url = new URL(`${this.baseUrl}${path}`);
+    const url = new URL(this.baseUrl + path);
     if (options.query) {
       for (const [key, value] of Object.entries(options.query)) {
         if (value !== undefined) {
@@ -41,12 +41,11 @@ export class BaserowApiClient {
       }
     }
 
+    const authHeader = "JWT " + token;
     const headers: Record<string, string> = {
-      Authorization: `JWT ${token}`,
+      Authorization: authHeader,
     };
-
     const fetchOptions: RequestInit = { method, headers };
-
     if (options.body !== undefined) {
       headers["Content-Type"] = "application/json";
       fetchOptions.body = JSON.stringify(options.body);
@@ -69,7 +68,7 @@ export class BaserowApiClient {
 
     if (!resp.ok) {
       const errMsg = typeof data === "string" ? data : JSON.stringify(data);
-      throw new Error(`API ${method} ${path} failed (${resp.status}): ${errMsg}`);
+      throw new Error("API " + method + " " + path + " failed (" + resp.status + "): " + errMsg);
     }
 
     return { status: resp.status, data };
@@ -82,14 +81,14 @@ export class BaserowApiClient {
   async listDatabases(workspaceId: number) {
     return this.request<unknown[]>(
       "GET",
-      `/api/applications/workspace/${workspaceId}/`,
+      "/api/applications/workspace/" + workspaceId + "/",
     );
   }
 
   async listTables(databaseId: number) {
     return this.request<unknown[]>(
       "GET",
-      `/api/database/tables/database/${databaseId}/`,
+      "/api/database/tables/database/" + databaseId + "/",
     );
   }
 
@@ -101,17 +100,17 @@ export class BaserowApiClient {
     const body: Record<string, unknown> = { name };
     if (data !== undefined) body.data = data;
     if (firstRowHeader !== undefined) body.first_row_header = firstRowHeader;
-    return this.request("POST", `/api/database/tables/database/${databaseId}/`, { body });
+    return this.request("POST", "/api/database/tables/database/" + databaseId + "/", { body });
   }
 
   async deleteTable(tableId: number) {
-    return this.request("DELETE", `/api/database/tables/${tableId}/`);
+    return this.request("DELETE", "/api/database/tables/" + tableId + "/");
   }
 
   async listFields(tableId: number) {
     return this.request<unknown[]>(
       "GET",
-      `/api/database/fields/table/${tableId}/`,
+      "/api/database/fields/table/" + tableId + "/",
     );
   }
 
@@ -120,15 +119,15 @@ export class BaserowApiClient {
     if (fieldOptions) {
       Object.assign(body, fieldOptions);
     }
-    return this.request("POST", `/api/database/fields/table/${tableId}/`, { body });
+    return this.request("POST", "/api/database/fields/table/" + tableId + "/", { body });
   }
 
   async updateField(fieldId: number, updates: Record<string, unknown>) {
-    return this.request("PATCH", `/api/database/fields/${fieldId}/`, { body: updates });
+    return this.request("PATCH", "/api/database/fields/" + fieldId + "/", { body: updates });
   }
 
   async deleteField(fieldId: number) {
-    return this.request("DELETE", `/api/database/fields/${fieldId}/`);
+    return this.request("DELETE", "/api/database/fields/" + fieldId + "/");
   }
 
   // ──────────────────────────────────────────────
@@ -145,7 +144,7 @@ export class BaserowApiClient {
       userFieldNames?: boolean;
     } = {},
   ) {
-    return this.request("GET", `/api/database/rows/table/${tableId}/`, {
+    return this.request("GET", "/api/database/rows/table/" + tableId + "/", {
       query: {
         page: params.page,
         size: params.size,
@@ -157,39 +156,39 @@ export class BaserowApiClient {
   }
 
   async createRow(tableId: number, data: Record<string, unknown>) {
-    return this.request("POST", `/api/database/rows/table/${tableId}/`, {
+    return this.request("POST", "/api/database/rows/table/" + tableId + "/", {
       body: data,
       query: { user_field_names: "true" },
     });
   }
 
   async updateRow(tableId: number, rowId: number, data: Record<string, unknown>) {
-    return this.request("PATCH", `/api/database/rows/table/${tableId}/${rowId}/`, {
+    return this.request("PATCH", "/api/database/rows/table/" + tableId + "/" + rowId + "/", {
       body: data,
       query: { user_field_names: "true" },
     });
   }
 
   async deleteRow(tableId: number, rowId: number) {
-    return this.request("DELETE", `/api/database/rows/table/${tableId}/${rowId}/`);
+    return this.request("DELETE", "/api/database/rows/table/" + tableId + "/" + rowId + "/");
   }
 
   async batchCreateRows(tableId: number, items: Record<string, unknown>[]) {
-    return this.request("POST", `/api/database/rows/table/${tableId}/batch/`, {
+    return this.request("POST", "/api/database/rows/table/" + tableId + "/batch/", {
       body: { items },
       query: { user_field_names: "true" },
     });
   }
 
   async batchUpdateRows(tableId: number, items: Record<string, unknown>[]) {
-    return this.request("PATCH", `/api/database/rows/table/${tableId}/batch/`, {
+    return this.request("PATCH", "/api/database/rows/table/" + tableId + "/batch/", {
       body: { items },
       query: { user_field_names: "true" },
     });
   }
 
   async batchDeleteRows(tableId: number, items: number[]) {
-    return this.request("POST", `/api/database/rows/table/${tableId}/batch-delete/`, {
+    return this.request("POST", "/api/database/rows/table/" + tableId + "/batch-delete/", {
       body: { items },
     });
   }
