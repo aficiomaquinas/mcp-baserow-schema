@@ -1,0 +1,53 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.aficiomaquinas/mcp-baserow-schema",
+  "title": "Baserow Schema MCP",
+  "description": "Generic Baserow API client MCP server with automatic 2FA (TOTP) auth and OpenAPI validation.",
+  "repository": {
+    "url": "https://github.com/aficiomaquinas/mcp-baserow-schema",
+    "source": "github",
+    "id": "1321034864"
+  },
+  "version": "2.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "mcp-baserow-schema",
+      "version": "2.0.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "BASEROW_API_URL",
+          "description": "Base URL of your Baserow instance, e.g. https://baserow.example.com",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "BASEROW_USERNAME",
+          "description": "Baserow account email",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "BASEROW_PASSWORD",
+          "description": "Baserow account password",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "BASEROW_TOTP_SECRET",
+          "description": "Base32 TOTP secret of your Baserow account's 2FA (totp) setup",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
