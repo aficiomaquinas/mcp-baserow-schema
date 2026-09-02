@@ -3,7 +3,7 @@
 Maintainer-facing guide. **Never bump versions, tags, or `server.json` manually** — everything is derived from [Conventional Commits](https://www.conventionalcommits.org/) since the last tag by [release-it](https://github.com/release-it/release-it):
 
 - `fix:` → patch · `feat:` → minor · `feat!:` / `BREAKING CHANGE:` → major
-- Other types (`docs:`, `chore:`, `refactor:`, `ci:`, ...) do **not** bump on their own; a release including only those needs an explicit patch via a `fix:`/`feat:` companion commit.
+- `docs:`, `refactor:`, `perf:` → patch (and appear in the changelog) · `chore:`, `test:`, `ci:`, `build:`, `style:` → no bump, hidden from changelog
 
 ## Cutting a release
 
