@@ -174,6 +174,25 @@ The 16 dedicated tools (`list_databases`, `create_field`, `batch_create_rows`, .
 
 Batch limits are no longer hardcoded — Baserow's own API limits apply (e.g. 200 items per batch call).
 
+## Releasing
+
+Releases are fully automated with [release-it](https://github.com/release-it/release-it) — **never bump versions, tags, or `server.json` manually**. The bump is derived from [Conventional Commits](https://www.conventionalcommits.org/) since the last tag:
+
+- `fix:` → patch · `feat:` → minor · `feat!:` / `BREAKING CHANGE:` → major
+
+```bash
+pnpm run release          # interactive release
+pnpm run release:dry-run  # preview the whole plan, changes nothing
+```
+
+One command does everything: rebuilds `dist/` → bumps `package.json` **and both `version` fields in `server.json`** (`@release-it/bumper`) → generates `CHANGELOG.md` from commits (`@release-it/conventional-changelog`) → commits `chore(release): x.y.z` → tags `vx.y.z` → pushes → `npm publish`.
+
+After the npm publish succeeds, update the MCP Registry (metadata only, requires `mcp-publisher login github` when the token expired):
+
+```bash
+mcp-publisher publish server.json
+```
+
 ## License
 
 MIT

@@ -24,13 +24,16 @@
     "dist",
     "openapi.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "mcpName": "io.github.aficiomaquinas/mcp-baserow-schema",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsc && node dist/index.js"
+    "dev": "tsc && node dist/index.js",
+    "release": "release-it",
+    "release:dry-run": "release-it --dry-run --ci --no-git.requireCleanWorkingDir"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
