@@ -4,8 +4,6 @@ MCP server for Baserow: a **generic Baserow API client** with **2FA authenticati
 
 One tool, the entire Baserow REST API. Schema changes (tables, fields, views, filters), row CRUD, workspace admin — anything documented in the OpenAPI spec is callable, with JWT auth handled automatically.
 
-> **v2.0.0 (breaking)**: the 16 hardcoded tools from v1 were replaced by a single generic `baserow_api` tool. See the [changelog note](#migrating-from-v1) below.
-
 ## Why
 
 Baserow's official MCP handles curated **data CRUD** but not the full API surface (schema changes, views, filters, admin endpoints). In 2026, plain password auth without 2FA is not acceptable. This MCP solves both:
@@ -155,44 +153,9 @@ Since v2, this MCP covers data operations too (rows, batches, search, sort), so 
 
 Running both side by side is fine; they don't conflict.
 
-## Migrating from v1
-
-The 16 dedicated tools (`list_databases`, `create_field`, `batch_create_rows`, ...) no longer exist. Map old calls to `baserow_api`:
-
-| v1 tool | v2 equivalent |
-|---|---|
-| `list_databases` | `baserow_api` GET `/api/applications/workspace/{workspace_id}/` |
-| `list_tables` | `baserow_api` GET `/api/database/tables/database/{database_id}/` |
-| `list_fields` | `baserow_api` GET `/api/database/fields/table/{table_id}/` |
-| `create_field` / `update_field` / `delete_field` | `baserow_api` POST/PATCH/DELETE `/api/database/fields/table/{table_id}/...` |
-| `create_table` / `delete_table` | `baserow_api` POST `/api/database/tables/database/{database_id}/` · DELETE `/api/database/tables/{table_id}/` |
-| `list_rows` | `baserow_api` GET `/api/database/rows/table/{table_id}/` (+ `?page=&size=&search=&order_by=`) |
-| `create_row` / `update_row` / `delete_row` | `baserow_api` POST/PATCH/DELETE `/api/database/rows/table/{table_id}/...` |
-| `batch_create_rows` / `batch_update_rows` | `baserow_api` POST/PATCH `/api/database/rows/table/{table_id}/batch/` |
-| `batch_delete_rows` | `baserow_api` POST `/api/database/rows/table/{table_id}/batch-delete/` |
-| `auth_status` | unchanged |
-
-Batch limits are no longer hardcoded — Baserow's own API limits apply (e.g. 200 items per batch call).
-
 ## Releasing
 
-Releases are fully automated with [release-it](https://github.com/release-it/release-it) — **never bump versions, tags, or `server.json` manually**. The bump is derived from [Conventional Commits](https://www.conventionalcommits.org/) since the last tag:
-
-- `fix:` → patch · `feat:` → minor · `feat!:` / `BREAKING CHANGE:` → major
-
-```bash
-pnpm run release          # interactive release
-pnpm run release:dry-run  # preview the whole plan, changes nothing
-```
-
-One command does everything locally: rebuilds `dist/` → bumps `package.json` **and both `version` fields in `server.json`** (`@release-it/bumper`) → generates `CHANGELOG.md` from commits (`@release-it/conventional-changelog`) → commits `chore(release): x.y.z` → tags `vx.y.z` → pushes.
-
-Publishing is then automatic: the `v*` tag push triggers [`.github/workflows/publish-mcp.yml`](.github/workflows/publish-mcp.yml), which publishes the package to npm via **OIDC trusted publishing** (no tokens, no secrets) and the server metadata to the MCP Registry via GitHub OIDC.
-
-One-time setup (both OIDC, no secrets involved):
-
-1. **npm trusted publisher** — on npmjs.com → package → Settings → Trusted Publisher: GitHub Actions, `aficiomaquinas/mcp-baserow-schema`, workflow `publish-mcp.yml`, allowed action `npm publish`. Requires npm CLI ≥ 11.5.1 / Node ≥ 22.14 at publish time (the workflow pins Node 24).
-2. **MCP Registry** — none; the workflow authenticates with `mcp-publisher login github-oidc`.
+Maintainers: see [docs/RELEASING.md](docs/RELEASING.md). Releases are fully automated (release-it + GitHub Actions with OIDC trusted publishing) — never bump versions, tags, or `server.json` manually.
 
 ## License
 
