@@ -1,6 +1,6 @@
 {
   "name": "mcp-baserow-schema",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Generic Baserow API client MCP server with 2FA auth and OpenAPI validation",
   "license": "MIT",
   "type": "module",
