@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * MCP Server entry point for Baserow with 2FA authentication.
  *

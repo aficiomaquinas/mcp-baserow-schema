@@ -5,6 +5,9 @@
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-baserow-schema": "dist/index.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aficiomaquinas/mcp-baserow-schema.git"
