@@ -187,13 +187,12 @@ pnpm run release:dry-run  # preview the whole plan, changes nothing
 
 One command does everything locally: rebuilds `dist/` → bumps `package.json` **and both `version` fields in `server.json`** (`@release-it/bumper`) → generates `CHANGELOG.md` from commits (`@release-it/conventional-changelog`) → commits `chore(release): x.y.z` → tags `vx.y.z` → pushes.
 
-Publishing is then automatic: the `v*` tag push triggers [`.github/workflows/publish-mcp.yml`](.github/workflows/publish-mcp.yml), which publishes the package to npm and the server metadata to the MCP Registry (GitHub OIDC — no registry token needed).
+Publishing is then automatic: the `v*` tag push triggers [`.github/workflows/publish-mcp.yml`](.github/workflows/publish-mcp.yml), which publishes the package to npm via **OIDC trusted publishing** (no tokens, no secrets) and the server metadata to the MCP Registry via GitHub OIDC.
 
-One-time prerequisite: an npm automation token in the repo secrets:
+One-time setup (both OIDC, no secrets involved):
 
-```bash
-gh secret set NPM_TOKEN --repo aficiomaquinas/mcp-baserow-schema
-```
+1. **npm trusted publisher** — on npmjs.com → package → Settings → Trusted Publisher: GitHub Actions, `aficiomaquinas/mcp-baserow-schema`, workflow `publish-mcp.yml`, allowed action `npm publish`. Requires npm CLI ≥ 11.5.1 / Node ≥ 22.14 at publish time (the workflow pins Node 24).
+2. **MCP Registry** — none; the workflow authenticates with `mcp-publisher login github-oidc`.
 
 ## License
 

@@ -8,17 +8,20 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # Required for MCP Registry OIDC authentication
+      id-token: write # Required for OIDC (npm trusted publishing + MCP Registry)
       contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
+      # npm trusted publishing requires npm >= 11.5.1 (bundled with Node 24)
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false # never use caching in release builds
 
       - name: Install dependencies
         run: npm ci
@@ -29,10 +32,11 @@ jobs:
       - name: Build package
         run: npm run build --if-present
 
+      # OIDC trusted publisher: no NODE_AUTH_TOKEN needed.
+      # The package must have the trusted publisher configured on npmjs.com
+      # (user aficiomaquinas / repo mcp-baserow-schema / workflow publish-mcp.yml).
       - name: Publish package to npm
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install mcp-publisher
         run: |
