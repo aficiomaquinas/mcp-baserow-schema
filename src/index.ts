@@ -8,10 +8,16 @@
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { BaserowAuth } from "./auth.js";
 import { BaserowApiClient } from "./api.js";
 import { validateEndpoint } from "./spec.js";
+
+// Package version, read from package.json at the repo/package root
+const { version: PKG_VERSION } = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
+) as { version: string };
 
 // ── Environment variables ──────────────────────────
 
@@ -43,7 +49,7 @@ const api = new BaserowApiClient(auth, API_URL);
 
 const server = new McpServer({
   name: "mcp-baserow",
-  version: "2.0.0",
+  version: PKG_VERSION,
 });
 
 // ── Tool: baserow_api ──────────────────────────────
