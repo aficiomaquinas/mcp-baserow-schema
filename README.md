@@ -185,12 +185,14 @@ pnpm run release          # interactive release
 pnpm run release:dry-run  # preview the whole plan, changes nothing
 ```
 
-One command does everything: rebuilds `dist/` → bumps `package.json` **and both `version` fields in `server.json`** (`@release-it/bumper`) → generates `CHANGELOG.md` from commits (`@release-it/conventional-changelog`) → commits `chore(release): x.y.z` → tags `vx.y.z` → pushes → `npm publish`.
+One command does everything locally: rebuilds `dist/` → bumps `package.json` **and both `version` fields in `server.json`** (`@release-it/bumper`) → generates `CHANGELOG.md` from commits (`@release-it/conventional-changelog`) → commits `chore(release): x.y.z` → tags `vx.y.z` → pushes.
 
-After the npm publish succeeds, update the MCP Registry (metadata only, requires `mcp-publisher login github` when the token expired):
+Publishing is then automatic: the `v*` tag push triggers [`.github/workflows/publish-mcp.yml`](.github/workflows/publish-mcp.yml), which publishes the package to npm and the server metadata to the MCP Registry (GitHub OIDC — no registry token needed).
+
+One-time prerequisite: an npm automation token in the repo secrets:
 
 ```bash
-mcp-publisher publish server.json
+gh secret set NPM_TOKEN --repo aficiomaquinas/mcp-baserow-schema
 ```
 
 ## License
