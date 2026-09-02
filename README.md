@@ -109,7 +109,7 @@ mcp_servers:
       - /path/to/mcp-baserow-schema/dist/index.js
     enabled: true
     env:
-      BASEROW_API_URL: https://baserow.ttamayo.com
+      BASEROW_API_URL: https://baserow.example.com
       BASEROW_USERNAME: you@example.com
       BASEROW_PASSWORD: your_password
       BASEROW_TOTP_SECRET: YOUR_BASE32_TOTP_SECRET
@@ -126,7 +126,7 @@ Add to `claude_desktop_config.json`:
       "command": "node",
       "args": ["/path/to/mcp-baserow-schema/dist/index.js"],
       "env": {
-        "BASEROW_API_URL": "https://baserow.ttamayo.com",
+        "BASEROW_API_URL": "https://baserow.example.com",
         "BASEROW_USERNAME": "you@example.com",
         "BASEROW_PASSWORD": "your_password",
         "BASEROW_TOTP_SECRET": "YOUR_BASE32_TOTP_SECRET"
