@@ -43,5 +43,4 @@ curl -s "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.
 
 - **Interleaved version error on npm publish** — the trusted publisher binds npm to the exact `repo`+`workflow` pair; renaming either requires updating the npm-side config.
 - **`Empty changeset`** — a bump with no file changes means release-it had nothing to commit; usually the version files were already bumped (check `git status` before rerunning).
-- **Local publish fallback** — if CI is unavailable, `mcp-publisher login github` + `mcp-publisher publish server.json` still work from a laptop (device flow), and `npm publish` will ask for browser 2FA confirmation. CI is the normal path.
 - **2FA security setting** — npm is restricting bypass-2FA granular tokens (Aug 2026) and deprecating them (Jan 2027). Trusted publishing is unaffected; do not go back to tokens.
